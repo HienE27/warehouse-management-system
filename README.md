@@ -1,133 +1,210 @@
 # Warehouse Management System (WMS)
 
-A full-stack, microservices-based **Warehouse Management System** for managing products, suppliers, customers, import/export slips, and inventory tracking. Integrated AI features including **OCR receipt scanning**, **inventory forecasting**, and an **AI chat assistant**.
+Full-stack **Warehouse Management System** built with **Spring Boot microservices** and **Next.js**. The system covers products, suppliers, customers, **import/export warehouse slips**, stock tracking, orders, and **AI-assisted** workflows (OCR for slips, inventory forecasting, chat assistant).
 
-## Architecture
+---
+
+## Repository layout
 
 ```
 warehouse-management-system/
-├── BE/                          # Backend (Java Spring Boot Microservices)
-│   ├── auth-service/            # Authentication & Authorization
-│   ├── product-service/         # Product Management
-│   ├── inventory-service/       # Inventory & Stock Management
-│   ├── order-service/           # Order Management
-│   ├── ai-service/              # AI Features (OCR, Forecasting, Chat)
-│   ├── api-gateway/             # API Gateway
-│   └── discovery-server/        # Service Discovery (Eureka)
-└── FE/                          # Frontend (Next.js)
+├── backend/                 # Java Spring Boot — microservices + Docker
+│   ├── auth-service/
+│   ├── product-service/
+│   ├── inventory-service/
+│   ├── order-service/
+│   ├── ai-service/
+│   ├── api-gateway/
+│   ├── discovery-server/    # Netflix Eureka
+│   ├── docker-compose.yml
+│   └── pom.xml              # Maven parent (multi-module)
+└── frontend/                # Next.js (App Router) + TypeScript
+    ├── src/
+    ├── public/
+    └── package.json
 ```
 
-## Features
+---
 
-### Core Modules
-| Module | Description |
-|--------|-------------|
-| **Product Management** | Products, categories, suppliers, units |
-| **Inventory Management** | Import/export slips, stock tracking, inventory checks |
-| **Order Management** | Customer orders, import/export orders |
-| **User Management** | Role-based access control with 4 roles |
+## Highlights
 
-### AI-Powered Features
-- **OCR Receipt Scanning**: Automatically extract product info, quantities, and prices from import/export slips
-- **Smart Inventory Forecasting**: AI-powered demand prediction
-- **AI Chat Assistant**: Natural language queries for warehouse data
+| Area | What you get |
+|------|----------------|
+| **Architecture** | **7** runnable microservices + **API Gateway** + **Eureka** discovery |
+| **Security** | **JWT**, **Spring Security**, **RBAC** with **4 roles** |
+| **Inventory** | Import/export slips, stock by warehouse, inventory checks |
+| **AI** | **Gemini**-based OCR for **import/export slips**, product image OCR, chat, forecasting; **Milvus** for vector similarity on slip metadata |
+| **Ops** | **Docker Compose** for local/stack deployment |
 
-### Role-Based Access Control
-| Role | Description |
-|------|-------------|
-| **ADMIN** | Full system access |
-| **MANAGER** | Approve/reject workflows |
-| **STAFF** | Create and view operations |
-| **USER** | Read-only access |
+---
 
-## Tech Stack
+## Microservices (`backend/`)
+
+| Service | Port (default) | Responsibility |
+|---------|----------------|----------------|
+| **discovery-server** | 8761 | Eureka registry |
+| **api-gateway** | 8080 | Single entry point, routing to services |
+| **product-service** | 8081 | Products, categories, suppliers, units, images |
+| **inventory-service** | 8082 | Imports, exports, stock, stores, inventory checks |
+| **order-service** | 8083 | Orders, customers |
+| **auth-service** | 8087 | Login, JWT, users, roles, permissions, activity logs, email (SMTP) |
+| **ai-service** | 8090 | Chat, descriptions, forecasts, OCR APIs, Milvus integration |
+
+> **Note:** `promotion-service` and `settings-cms-service` exist in the repo but are **disabled** in the parent `pom.xml` (not part of the default build).
+
+---
+
+## Tech stack
 
 ### Backend
-- **Java 17**, **Spring Boot 3**, **Spring Cloud**
-- **MySQL** (per-service databases)
-- **Spring Security** with **JWT** Authentication
-- **Eureka** Service Discovery
-- **API Gateway** for centralized routing
-- **Docker** & **Docker Compose**
+
+- **Java 17**
+- **Spring Boot 3.5.x**, **Spring Data JPA**, **Hibernate**
+- **Spring Security** + **JWT** (jjwt)
+- **Spring Cloud** — **Netflix Eureka Client**, **Spring Cloud Gateway**
+- **MySQL** (`mysql-connector-j`)
+- **Spring Mail** (forgot password / verification when enabled)
+- **WebClient** (reactive HTTP to Gemini and internal calls)
+- **Docker** / **Docker Compose**
+- **Maven** (multi-module parent POM)
 
 ### Frontend
-- **Next.js 14** (App Router)
+
+- **Next.js 16** (App Router)
+- **React 19**
 - **TypeScript**
-- **Tailwind CSS**
-- **React Query** / **Axios**
+- **Tailwind CSS 4**
+- **Material Tailwind**
+- **TanStack React Query**
+- **Axios**
+- **Zod**
+- **TipTap** (rich text)
+- **jsPDF** / **jspdf-autotable**, **xlsx** (exports)
 
-### AI & Infrastructure
-- **Gemini API** (AI Chat, Forecasting)
-- **Milvus** (Vector Database for embeddings)
-- **OCR** (Tesseract or cloud-based)
+### AI & data
 
-## Quick Start
+- **Google Gemini API** (vision + text)
+- **Milvus 2.x** (vector DB; used with OCR / slip metadata — see `docker-compose.yml` in `backend/`)
 
-### Prerequisites
-- Java 17+
-- Node.js 18+
-- Docker & Docker Compose
-- MySQL 8.0+
+---
 
-### Backend Setup
+## Features (functional)
+
+### Core
+
+- **Products**: CRUD, images, discounts, links to inventory
+- **Categories, suppliers, units**
+- **Customers** (order domain)
+- **Import slips** / **Export slips**: create, edit, workflows, integration with stock
+- **Stock** and **warehouses (stores)**
+- **Inventory checks** (kiểm kê)
+- **Orders** and related APIs
+- **Users / roles / permissions** and **activity logs** (cross-service logging via auth-service)
+
+### AI-powered
+
+- **OCR — import/export slips**: read slip or form screenshots; extract supplier/customer, line items, quantities, prices, warehouse per line; optional **similar-slip** hints via embeddings + **Milvus**
+- **OCR — product images**: extract name, SKU, price, specs from labels or photos
+- **Chat assistant**: answers using aggregated product / stock / order context (with auth)
+- **Product description generator** (marketing-style JSON: short / SEO / long)
+- **Inventory forecast** endpoint (structured risk / overstock suggestions; Gemini with rule-based fallback)
+
+---
+
+## Roles (RBAC)
+
+| Role | Typical use |
+|------|-------------|
+| **ADMIN** | Full administration |
+| **MANAGER** | Approvals, operational oversight |
+| **STAFF** | Day-to-day data entry and viewing |
+| **USER** | Limited / read-oriented access |
+
+Seed users and SQL samples may exist under `backend/` (e.g. `test_users_and_roles.sql`). **Change default passwords before any public deployment.**
+
+---
+
+## Prerequisites
+
+- **JDK 17**
+- **Node.js 20+** (recommended for Next 16)
+- **MySQL 8** (schema `qlkh` or as configured)
+- **Docker Desktop** (optional but recommended for Compose stack + Milvus)
+- **Gemini API key** (for AI features)
+
+---
+
+## Quick start
+
+### 1. Database
+
+Create a MySQL database and user matching your config (see `backend/docker-compose.yml` and each service `application.yaml`). Default Compose examples often use database name **`qlkh`**.
+
+### 2. Backend
 
 ```bash
-# Navigate to BE folder
-cd BE
+cd backend
 
-# Build with Maven
-./mvnw clean install
-
-# Or run with Docker
-docker-compose up -d
+# Run whole stack (Eureka, gateway, services, Milvus stack) — adjust env / MySQL host
+docker compose up -d --build
 ```
 
-### Frontend Setup
+For **local IDE** runs, start **discovery-server** first, then other services, and point them at Eureka and MySQL.
+
+Copy environment secrets (do **not** commit real keys):
+
+- Create `backend/.env` for Compose (see repo docs: `SMTP-GMAIL-SETUP.md`, `HUONG_DAN_UPDATE_API_KEY.md`).
+- Set **`GEMINI_API_KEY`** for `ai-service` when using AI.
+
+### 3. Frontend
 
 ```bash
-# Navigate to FE folder
-cd FE
-
-# Install dependencies
+cd frontend
 npm install
-
-# Run development server
 npm run dev
 ```
 
-### Test Accounts
+Point the frontend API base URL to the **API Gateway** (default **http://localhost:8080**) via your existing env/config pattern in `frontend/`.
 
-| Username | Password | Role |
-|----------|----------|------|
-| admin | password123 | ADMIN |
-| manager | password123 | MANAGER |
-| staff | password123 | STAFF |
-| user | password123 | USER |
+---
 
-## API Documentation
+## Documentation (backend/)
 
-### Backend Services
+| File | Topic |
+|------|--------|
+| `SMTP-GMAIL-SETUP.md` | Gmail / MailHog for auth emails |
+| `HUONG_DAN_UPDATE_API_KEY.md` | Rotating Gemini API key |
+| `README-MILVUS.md` | Milvus-related notes |
+| `VECTOR-EMBEDDING-EXPLANATION.md` | Embeddings concept |
 
-| Service | Port | Description |
-|---------|------|-------------|
-| Discovery Server | 8761 | Eureka Service Registry |
-| API Gateway | 8080 | Centralized routing |
-| Auth Service | 8081 | Authentication |
-| Product Service | 8082 | Product Management |
-| Inventory Service | 8083 | Inventory Operations |
-| Order Service | 8084 | Order Processing |
-| AI Service | 8085 | AI Features |
+---
 
-## Project Statistics
+## Project scale (indicative)
 
-| Metric | Count |
-|--------|-------|
-| **Microservices** | 7 |
-| **REST Controllers** | 29 |
-| **API Endpoints** | 150+ |
-| **Database Entities** | 35 |
-| **Roles** | 4 |
+| Metric | Approx. |
+|--------|--------|
+| Microservices (active) | **7** |
+| REST controllers | **~29** |
+| HTTP endpoints | **150+** |
+| JPA entities (across services) | **30+** |
+| RBAC roles | **4** |
+
+---
+
+## Security notes
+
+- Never commit **`.env`**, real **JWT secrets**, or **database passwords**.
+- Rotate **Gemini** keys and restrict **MySQL** to trusted networks in production.
+- Use **HTTPS** and hardened **CORS** in production.
+
+---
 
 ## License
 
-This project is for educational purposes.
+Educational / thesis use unless you attach another license.
+
+---
+
+## Author
+
+**HienE27** — [github.com/HienE27](https://github.com/HienE27)
