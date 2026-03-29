@@ -1,6 +1,8 @@
 # Root-level ignores shared by all backend services
 .env
 .env.*
+*.log
+debug.log
 
 
 # Docker volumes - KHÔNG commit
